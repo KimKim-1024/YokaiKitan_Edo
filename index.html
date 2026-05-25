@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>江戸妖異譚 - バトルデモ</title>
+    <title>江戸妖異譚 - 横画面バトルデモ</title>
     <style>
-        /* 江戸のダークファンタジーをイメージしたベーススタイル */
+        /* ベーススタイル：横画面用の黒基調 */
         body {
             margin: 0;
             padding: 0;
@@ -20,29 +20,40 @@
             user-select: none;
         }
 
-        /* スマホ縦画面を想定したゲーム画面の枠 */
+        /* 横画面（16:9想定、PC・スマホ横持ちサイズ） */
         #game-container {
-            width: 430px;
-            height: 932px;
+            width: 932px;
+            height: 430px;
             background-image: url('bg_chikurin.png');
             background-size: cover;
             background-position: center;
             position: relative;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
             border: 2px solid #2a1f1a;
             overflow: hidden;
+            display: flex;
+            flex-direction: row;
         }
 
-        /* 上部情報エリア */
-        #top-bar {
+        /* 遮断レイヤー（メニュー開帳時や戦闘中に操作を全ロックする用） */
+        #global-overlay {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 90;
+            display: none;
+            background: transparent;
+        }
+
+        /* 画面上部：共通UI（刻ゲージ、メニュー等） */
+        #top-header {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 10;
+            z-index: 20;
         }
         .icon-btn {
             width: 40px;
@@ -55,7 +66,7 @@
         #speed-btn { background-image: url('icon_speed.png'); }
         
         #time-gauge-container {
-            width: 150px;
+            width: 160px;
             height: 40px;
             background-image: url('frame_time.png');
             background-size: 100% 100%;
@@ -67,90 +78,88 @@
             text-shadow: 1px 1px 3px black;
         }
 
-        /* 敵エリア（奥に配置） */
-        #enemy-area {
-            position: absolute;
-            top: 120px;
-            left: 0;
-            width: 100%;
+        /* 画面左側：敵陣エリア */
+        #left-enemy-pane {
+            width: 40%;
+            height: 100%;
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
-            transform: scale(0.85); /* 遠近感を出すために少し縮小 */
+            padding-top: 40px;
+            position: relative;
         }
         #enemy-sprite {
-            width: 180px;
-            height: 180px;
+            width: 200px;
+            height: 200px;
             background-image: url('enemy_ghost.png');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
+            transition: opacity 0.5s;
         }
-        .hp-container {
-            width: 200px;
-            height: 30px;
+        #victory-display {
+            width: 220px;
+            height: 110px;
+            background-image: url('text_shouri.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: none;
+            position: absolute;
+        }
+        .enemy-hp-container {
+            width: 220px;
+            height: 35px;
             position: relative;
             margin-top: 10px;
         }
-        .enemy-hp-frame { background-image: url('frame_enemy_hp.png'); background-size: 100% 100%; width: 100%; height: 100%; position: absolute; z-index: 2;}
-        .alli-hp-frame { background-image: url('frame_alli_hp.png'); background-size: 100% 100%; width: 100%; height: 100%; position: absolute; z-index: 2;}
-        .hp-bar {
-            height: 60%;
+        .enemy-hp-frame { background-image: url('frame_enemy_hp.png'); background-size: 100% 100%; width: 100%; height: 100%; position: absolute; z-index: 2; }
+        .hp-bar-fill {
+            height: 50%;
             background: linear-gradient(90deg, #8a0000, #ff3b3b);
             position: absolute;
-            top: 20%;
-            left: 5%;
-            width: 90%;
+            top: 25%; left: 5%; width: 90%;
             transition: width 0.3s;
             z-index: 1;
         }
+        /* 敵の状態異常バッジ表示 */
+        #enemy-status-tray {
+            margin-top: 5px;
+            min-height: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff9f43;
+            text-shadow: 1px 1px 2px black;
+        }
 
-        /* 道具（アイテム）事前指定エリア */
-        #item-select-area {
-            position: absolute;
-            top: 380px;
-            width: 100%;
+        /* 画面中央〜右側：戦場・味方陣形 */
+        #right-battle-pane {
+            width: 60%;
+            height: 100%;
+            position: relative;
             display: flex;
-            justify-content: center;
-            gap: 10px;
-            z-index: 5;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 20px;
         }
-        .item-card {
-            width: 55px;
-            height: 73px; /* 3:4 */
-            background-size: cover;
-            border-radius: 4px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
-            transition: transform 0.2s;
-        }
-        .item-card.selected {
-            transform: translateY(-10px);
-            outline: 2px solid #ffd700;
-        }
-        #item-hiuchiish { background-image: url('item_hiuchiish.png'); }
-        #item-shio { background-image: url('item_shio.png'); }
-        #item-omiki { background-image: url('item_omiki.png'); }
-        #item-katashiro { background-image: url('item_katashiro.png'); }
 
-        /* 味方陣形（前衛・後衛）エリア */
+        /* 陣形スロット配置（上が敵に近い前衛、下が後衛） */
         #battle-field {
-            position: absolute;
-            top: 480px;
-            width: 100%;
-            height: 260px;
-            display: grid;
-            grid-template-rows: 1fr 1fr;
-            gap: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
         }
         .field-row {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 25px;
         }
         .slot {
-            width: 90px;
-            height: 120px; /* 3:4 */
+            width: 85px;
+            height: 113px; /* 3:4比率 */
             background-size: 100% 100%;
             position: relative;
             display: flex;
@@ -162,8 +171,8 @@
 
         /* 妖怪カード */
         .yokai-card {
-            width: 80px;
-            height: 110px;
+            width: 76px;
+            height: 104px;
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
@@ -175,157 +184,232 @@
             align-items: center;
         }
         .yokai-card:active { cursor: grabbing; }
-        
-        /* 妖怪個別の画像指定 */
         #yokai-karakasa { background-image: url('alli_karakasa.png'); }
         #yokai-nekomata { background-image: url('alli_nekomata.png'); }
         #yokai-tengu { background-image: url('alli_tengu.png'); }
         #yokai-chochin { background-image: url('alli_chochin.png'); }
 
-        .mini-hp-bar {
-            width: 90%;
-            height: 6px;
-            background-color: #333;
-            margin-bottom: 5px;
-            border-radius: 3px;
-            overflow: hidden;
+        /* 味方体力ゲージ枠の可視化 */
+        .alli-hp-container {
+            width: 70px;
+            height: 16px;
+            background-image: url('frame_alli_hp.png');
+            background-size: 100% 100%;
+            position: relative;
+            margin-bottom: 2px;
         }
-        .mini-hp-fill {
-            height: 100%;
+        .alli-hp-bar {
+            position: absolute;
+            top: 25%; left: 5%; width: 90%; height: 50%;
             background-color: #2ed573;
-            width: 100%;
             transition: width 0.3s;
         }
 
-        /* 行動順の数字表示用 */
+        /* 行動順 */
         .order-number {
             position: absolute;
-            top: -10px;
-            right: -10px;
-            width: 30px;
-            height: 30px;
+            top: -8px; right: -8px;
+            width: 26px; height: 26px;
             background-size: contain;
             background-repeat: no-repeat;
             z-index: 5;
             display: none;
         }
 
-        /* 下部操作エリア */
-        #bottom-bar {
-            position: absolute;
-            bottom: 30px;
-            left: 0;
+        /* 道具（アイテム）事前指定トレイ */
+        #item-select-area {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .item-frame-wrapper {
+            width: 50px;
+            height: 66px; /* 3:4の半透明枠 */
+            background-image: url('frame_kouei.png'); /* 道具枠として半透明フレームを流用 */
+            background-size: 100% 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .item-card {
+            width: 42px;
+            height: 56px;
+            background-size: cover;
+            border-radius: 3px;
+        }
+        .item-frame-wrapper.selected {
+            transform: translateY(-8px);
+            outline: 2px solid #ffd700;
+        }
+        #item-hiuchiish { background-image: url('item_hiuchiish.png'); }
+        #item-shio { background-image: url('item_shio.png'); }
+        #item-omiki { background-image: url('item_omiki.png'); }
+        #item-katashiro { background-image: url('item_katashiro.png'); }
+
+        /* 下部操作・情報 */
+        #control-panel {
             width: 100%;
             display: flex;
-            flex-direction: column;
+            justify-content: space-around;
             align-items: center;
-            gap: 15px;
+            padding: 0 20px;
+            box-sizing: border-box;
         }
         #shouki-container {
-            font-size: 16px;
+            font-size: 14px;
             color: #7bedf2;
-            text-shadow: 0 0 5px #00d2d3;
+            text-shadow: 0 0 4px #00d2d3;
+            width: 150px;
+        }
+        #battle-log {
+            font-size: 16px;
+            color: #ffd700;
+            text-shadow: 1px 1px 3px black;
+            font-weight: bold;
+            text-align: center;
+            width: 300px;
         }
         #jikkou-btn {
-            width: 80px;
-            height: 80px;
+            width: 65px; height: 65px;
             background-image: url('icon_jikkou.png');
             background-size: contain;
             background-repeat: no-repeat;
             cursor: pointer;
-            transition: transform 0.1s;
         }
-        #jikkou-btn:active { transform: scale(0.9); }
+        #jikkou-btn:active { transform: scale(0.95); }
 
-        /* アニメーションクラス */
-        .attack-pulse { animation: attackAni 0.4s ease-in-out; }
-        .damage-blink { animation: blinkAni 0.2s double; }
-        
-        @keyframes attackAni {
-            0% { transform: translateY(0); }
-            50% { transform: translateY(-30px) scale(1.1); }
-            100% { transform: translateY(0); }
-        }
-        @keyframes blinkAni {
-            0% { opacity: 1; filter: brightness(1); }
-            50% { opacity: 0.3; filter: brightness(3) sepia(1) hue-rotate(-50deg); }
-            100% { opacity: 1; filter: brightness(1); }
-        }
-
-        /* ログ・テキストエフェクト */
-        #battle-log {
+        /* メニュー開帳：妖異解説書（ポップアップ） */
+        #menu-modal {
             position: absolute;
-            top: 320px;
-            width: 100%;
-            text-align: center;
-            font-size: 18px;
-            color: #ffd700;
-            text-shadow: 2px 2px 4px black;
-            font-weight: bold;
-            pointer-events: none;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(12, 9, 8, 0.95);
+            z-index: 100;
+            display: none;
+            box-sizing: border-box;
+            padding: 30px;
+            flex-direction: column;
+        }
+        #menu-modal h2 { color: #ffd700; border-bottom: 1px solid #3e3022; padding-bottom: 10px; margin-top: 0; }
+        .modal-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            overflow-y: auto;
+            height: 280px;
+            font-size: 14px;
+        }
+        .modal-section h3 { color: #deff9a; margin: 5px 0; }
+        .modal-section ul { padding-left: 20px; margin: 5px 0; }
+        #close-menu-btn {
+            align-self: center;
+            margin-top: 15px;
+            padding: 8px 24px;
+            background-color: #3e3022;
+            color: #e0d8c3;
+            border: 1px solid #ffd700;
+            cursor: pointer;
         }
 
-        /* 勝敗リザルト画面 */
+        /* 敗北リザルト画面 */
         #result-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.8);
+            background-color: rgba(0,0,0,0.85);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 100;
+            z-index: 110;
         }
-        #result-text-img {
-            width: 300px;
-            height: 150px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
+        #result-text-img { width: 300px; height: 150px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+
+        /* 動的演出用アニメーション */
+        .attack-pulse { animation: attackAni 0.4s ease-in-out; }
+        .damage-blink { animation: blinkAni 0.2s ease-in-out 2; }
+        @keyframes attackAni {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-40px) scale(1.05); }
+            100% { transform: translateX(0); }
+        }
+        @keyframes blinkAni {
+            0% { opacity: 1; }
+            50% { opacity: 0.2; filter: brightness(2); }
+            100% { opacity: 1; }
         }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div id="top-bar">
-        <div id="menu-btn" class="icon-btn"></div>
+    <div id="global-overlay"></div>
+
+    <div id="top-header">
+        <div id="menu-btn" class="icon-btn" onclick="openMenu()"></div>
         <div id="time-gauge-container">逢魔が時 (1/5)</div>
         <div id="speed-btn" class="icon-btn"></div>
     </div>
 
-    <div id="enemy-area">
+    <div id="left-enemy-pane">
         <div id="enemy-sprite"></div>
-        <div class="hp-container">
+        <div id="victory-display"></div> <div class="enemy-hp-container">
             <div class="enemy-hp-frame"></div>
-            <div id="enemy-hp-bar" class="hp-bar"></div>
+            <div id="enemy-hp-bar" class="hp-bar-fill"></div>
+        </div>
+        <div id="enemy-status-tray">付着状態: 無し</div>
+    </div>
+
+    <div id="right-battle-pane">
+        
+        <div id="battle-field">
+            <div class="field-row">
+                <div class="slot zenei-slot" id="slot-zenei-1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                <div class="slot zenei-slot" id="slot-zenei-2" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            </div>
+            <div class="field-row">
+                <div class="slot kouei-slot" id="slot-kouei-1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+                <div class="slot kouei-slot" id="slot-kouei-2" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            </div>
+        </div>
+
+        <div id="item-select-area">
+            <div id="wrapper-hiuchiish" class="item-frame-wrapper" onclick="selectItem('hiuchiish')"><div id="item-hiuchiish" class="item-card"></div></div>
+            <div id="wrapper-shio" class="item-frame-wrapper" onclick="selectItem('shio')"><div id="item-shio" class="item-card"></div></div>
+            <div id="wrapper-omiki" class="item-frame-wrapper" onclick="selectItem('omiki')"><div id="item-omiki" class="item-card"></div></div>
+            <div id="wrapper-katashiro" class="item-frame-wrapper" onclick="selectItem('katashiro')"><div id="item-katashiro" class="item-card"></div></div>
+        </div>
+
+        <div id="control-panel">
+            <div id="shouki-container">万屋の正気度: 100 / 100</div>
+            <div id="battle-log">布陣を定め、道具を選び、行動順をタップせよ</div>
+            <div id="jikkou-btn" onclick="startTurn()"></div>
         </div>
     </div>
 
-    <div id="battle-log">陣形を整え、道具を選べ</div>
-
-    <div id="item-select-area">
-        <div id="item-hiuchiish" class="item-card" onclick="selectItem('hiuchiish')"></div>
-        <div id="item-shio" class="item-card" onclick="selectItem('shio')"></div>
-        <div id="item-omiki" class="item-card" onclick="selectItem('omiki')"></div>
-        <div id="item-katashiro" class="item-card" onclick="selectItem('katashiro')"></div>
-    </div>
-
-    <div id="battle-field">
-        <div class="field-row">
-            <div class="slot kouei-slot" id="slot-kouei-1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-            <div class="slot kouei-slot" id="slot-kouei-2" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+    <div id="menu-modal">
+        <h2>妖異解説書・道具目録</h2>
+        <div class="modal-content">
+            <div class="modal-section">
+                <h3>【妖怪の技】</h3>
+                <ul>
+                    <li><strong>からかさおばけ:</strong> 敵の攻撃を誘引し、反撃で「油」を塗る。</li>
+                    <li><strong>ちょうちんおばけ:</strong> 「怪火」で敵を炎上させる。油状態の敵なら【大炎上】へ。</li>
+                    <li><strong>猫又:</strong> 鋭い爪で引き裂く。状態異常中の敵には呪いが深まる。</li>
+                    <li><strong>天狗:</strong> 「神隠しの突風」を放ち、油や炎を敵全体に煽り広げる。</li>
+                </ul>
+            </div>
+            <div class="modal-section">
+                <h3>【道具の効果】</h3>
+                <ul>
+                    <li><strong>火打石:</strong> 敵に直接火花を散らす。油状態の敵に使うと即座に【大炎上】させる。</li>
+                    <li><strong>不浄の塩:</strong> 味方の前衛を清め、一時的に守りを固める。</li>
+                    <li><strong>御神酒:</strong> 妖怪の妖力を一時的に激化させ、技の威力を高める。</li>
+                    <li><strong>身代わり形代:</strong> 敵の強力な怪異の一撃を、万屋の代わりに引き受ける。</li>
+                </ul>
+            </div>
         </div>
-        <div class="field-row">
-            <div class="slot zenei-slot" id="slot-zenei-1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-            <div class="slot zenei-slot" id="slot-zenei-2" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-        </div>
-    </div>
-
-    <div id="yokai-storage" style="display:none;"></div>
-
-    <div id="bottom-bar">
-        <div id="shouki-container">万屋の正気度: 100 / 100</div>
-        <div id="jikkou-btn" onclick="startTurn()"></div>
+        <button id="close-menu-btn" onclick="closeMenu()">戦場へ戻る</button>
     </div>
 
     <div id="result-screen" onclick="location.reload()">
@@ -333,41 +417,48 @@
     </div>
 </div>
 
-<div id="yokai-assets">
+<div id="yokai-assets" style="display:none;">
     <div id="yokai-karakasa" class="yokai-card" draggable="true" ondragstart="drag(event)" onclick="selectOrder('karakasa')">
         <div class="order-number" id="order-karakasa"></div>
-        <div class="mini-hp-bar"><div id="hp-karakasa" class="mini-hp-fill"></div></div>
+        <div class="alli-hp-container"><div id="hp-karakasa" class="alli-hp-bar"></div></div>
     </div>
     <div id="yokai-nekomata" class="yokai-card" draggable="true" ondragstart="drag(event)" onclick="selectOrder('nekomata')">
         <div class="order-number" id="order-nekomata"></div>
-        <div class="mini-hp-bar"><div id="hp-nekomata" class="mini-hp-fill"></div></div>
+        <div class="alli-hp-container"><div id="hp-nekomata" class="alli-hp-bar"></div></div>
     </div>
     <div id="yokai-tengu" class="yokai-card" draggable="true" ondragstart="drag(event)" onclick="selectOrder('tengu')">
         <div class="order-number" id="order-tengu"></div>
-        <div class="mini-hp-bar"><div id="hp-tengu" class="mini-hp-fill"></div></div>
+        <div class="alli-hp-container"><div id="hp-tengu" class="alli-hp-bar"></div></div>
     </div>
     <div id="yokai-chochin" class="yokai-card" draggable="true" ondragstart="drag(event)" onclick="selectOrder('chochin')">
         <div class="order-number" id="order-chochin"></div>
-        <div class="mini-hp-bar"><div id="hp-chochin" class="mini-hp-fill"></div></div>
+        <div class="alli-hp-container"><div id="hp-chochin" class="alli-hp-bar"></div></div>
     </div>
 </div>
 
 <script>
-    // --- ゲームデータ管理 ---
     let turn = 1;
     let selectedItem = null;
     let actionOrder = [];
     let isBattling = false;
 
-    const enemy = { name: "怨霊", hp: 350, maxHp: 350, atk: 35 };
-    const yokais = {
-        karakasa: { name: "からかさおばけ", hp: 120, maxHp: 120, atk: 15, role: "zenei", id: "yokai-karakasa" },
-        nekomata: { name: "猫又", hp: 90, maxHp: 90, atk: 25, role: "kouei", id: "yokai-nekomata" },
-        tengu: { name: "天狗", hp: 100, maxHp: 100, atk: 30, role: "kouei", id: "yokai-tengu" },
-        chochin: { name: "ちょうちんおばけ", hp: 80, maxHp: 80, atk: 20, role: "zenei", id: "yokai-chochin" }
+    // ゲーム内システム用の翻訳辞書
+    const jpNames = {
+        hiuchiish: "火打石", shio: "不浄の塩", omiki: "御神酒", katashiro: "身代わり形代",
+        karakasa: "からかさおばけ", nekomata: "猫又", tengu: "天狗", chochin: "ちょうちんおばけ"
     };
 
-    // 初期配置の流し込み
+    // 敵データ（HPを1000に増強、永続する状態異常フィールドを管理）
+    const enemy = { name: "怨霊", hp: 1000, maxHp: 1000, atk: 35, status: "無し" };
+    
+    const yokais = {
+        karakasa: { name: "からかさおばけ", hp: 120, maxHp: 120, atk: 20, id: "yokai-karakasa" },
+        nekomata: { name: "猫又", hp: 90, maxHp: 90, atk: 35, id: "yokai-nekomata" },
+        tengu: { name: "天狗", hp: 100, maxHp: 100, atk: 40, id: "yokai-tengu" },
+        chochin: { name: "ちょうちんおばけ", hp: 80, maxHp: 80, atk: 25, id: "yokai-chochin" }
+    };
+
+    // 陣形の初期流し込み（上段：前衛にからかさ・ちょうちん、下段：後衛に猫又・天狗）
     window.onload = function() {
         document.getElementById('slot-zenei-1').appendChild(document.getElementById('yokai-karakasa'));
         document.getElementById('slot-zenei-2').appendChild(document.getElementById('yokai-chochin'));
@@ -375,69 +466,77 @@
         document.getElementById('slot-kouei-2').appendChild(document.getElementById('yokai-tengu'));
     };
 
-    // --- ドラッグ＆ドロップ機能 ---
+    // --- メニュー表示/非表示（完全ロック機能） ---
+    function openMenu() {
+        document.getElementById('menu-modal').style.display = 'flex';
+        document.getElementById('global-overlay').style.display = 'block'; // 入力を遮断
+    }
+    function closeMenu() {
+        document.getElementById('menu-modal').style.display = 'none';
+        if(!isBattling) document.getElementById('global-overlay').style.display = 'none';
+    }
+
+    // --- 陣形配置（ドラッグ＆ドロップ） ---
     function allowDrop(ev) { ev.preventDefault(); }
-    function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
+    function drag(ev) { if(isBattling) return; ev.dataTransfer.setData("text", ev.target.id); }
     function drop(ev) {
         ev.preventDefault();
+        if(isBattling) return;
         let data = ev.dataTransfer.getData("text");
         let card = document.getElementById(data);
         if (ev.target.classList.contains('slot') && ev.target.children.length === 0) {
             ev.target.appendChild(card);
-            // ログの更新
-            document.getElementById('battle-log').innerHTML = "陣形を変更した";
+            document.getElementById('battle-log').innerHTML = "布陣を組み替えた";
         }
     }
 
-    // --- 道具指定機能 ---
+    // --- 道具の指定（ファイル名ではなく日本語でログ表示） ---
     function selectItem(itemType) {
         if(isBattling) return;
-        document.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.item-frame-wrapper').forEach(c => c.classList.remove('selected'));
         if (selectedItem === itemType) {
             selectedItem = null;
-            document.getElementById('battle-log').innerHTML = "道具を取り消した";
+            document.getElementById('battle-log').innerHTML = "道具の指定を取り消した";
         } else {
             selectedItem = itemType;
-            document.getElementById(`item-${itemType}`).classList.add('selected');
-            document.getElementById('battle-log').innerHTML = `道具【${itemType}】を指定した`;
+            document.getElementById(`wrapper-${itemType}`).classList.add('selected');
+            document.getElementById('battle-log').innerHTML = `先手道具に【${jpNames[itemType]}】を指定した`;
         }
     }
 
-    // --- 行動順選択機能 ---
+    // --- 行動順の選択 ---
     function selectOrder(yokaiKey) {
         if(isBattling) return;
         const index = actionOrder.indexOf(yokaiKey);
         const badge = document.getElementById(`order-${yokaiKey}`);
 
         if (index > -1) {
-            // 既に選択されていれば解除
             actionOrder.splice(index, 1);
             badge.style.display = 'none';
         } else {
-            // 4体まで順番を指定可能
             if(actionOrder.length >= 4) return;
             actionOrder.push(yokaiKey);
             badge.style.backgroundImage = `url('num_${actionOrder.length}.png')`;
             badge.style.display = 'block';
         }
-        // リアルタイムに数字表示を更新
         actionOrder.forEach((key, i) => {
             document.getElementById(`order-${key}`).style.backgroundImage = `url('num_${i+1}.png')`;
         });
     }
 
-    // --- ターン実行（非同期アニメーション処理） ---
+    // --- 主戦闘フェーズ（ターン進行） ---
     async function startTurn() {
         if (isBattling || actionOrder.length === 0) return;
         isBattling = true;
-        
-        // 道具の効果を先にあらかじめ適用
+        document.getElementById('global-overlay').style.display = 'block'; // バトル中の操作を完全誤爆防止
+
+        // 1. 道具の発動（先手処理）
         if (selectedItem) {
             applyItemEffect();
-            await sleep(1000);
+            await sleep(1200);
         }
 
-        // 味方の攻撃フェーズ
+        // 2. 妖怪たちの連続攻撃（状態異常システム連鎖）
         for (let yokaiKey of actionOrder) {
             if (yokais[yokaiKey].hp <= 0) continue;
             if (enemy.hp <= 0) break;
@@ -445,59 +544,85 @@
             let cardEl = document.getElementById(yokais[yokaiKey].id);
             let enemyEl = document.getElementById('enemy-sprite');
 
-            document.getElementById('battle-log').innerHTML = `${yokais[yokaiKey].name}の攻撃！`;
+            document.getElementById('battle-log').innerHTML = `【${jpNames[yokaiKey]}】の技が繰り出される！`;
             cardEl.classList.add('attack-pulse');
-            
             await sleep(200);
-            enemyEl.classList.add('damage-blink');
             
-            // ダメージ計算（簡易コンボ要素：2番手以降は威力1.2倍）
-            let finalAtk = yokais[yokaiKey].atk;
-            if(actionOrder.indexOf(yokaiKey) > 0) finalAtk = Math.floor(finalAtk * 1.2);
+            enemyEl.classList.add('damage-blink');
 
-            enemy.hp = Math.max(0, enemy.hp - finalAtk);
+            // 属性・コンボの仕組み計算
+            let dmg = yokais[yokaiKey].atk;
+            
+            if (yokaiKey === 'chochin') {
+                if (enemy.status === "油まみれ") {
+                    dmg *= 2; // 油+火 = 大炎上（ダメージ2倍）
+                    enemy.status = "大炎上";
+                    document.getElementById('battle-log').innerHTML = "油に怪火が引火！【大炎上】を引き起こした！";
+                } else if (enemy.status === "無し") {
+                    enemy.status = "炎上";
+                }
+            } else if (yokaiKey === 'karakasa') {
+                // からかさは油を塗る下地
+                if (enemy.status === "無し") enemy.status = "油まみれ";
+            } else if (yokaiKey === 'nekomata' && (enemy.status === "炎上" || enemy.status === "大炎上")) {
+                dmg = Math.floor(dmg * 1.3); // 炎上中の敵には爪が深く刺さる
+            }
+
+            // 敵の状態異常表示の更新
+            document.getElementById('enemy-status-tray').innerHTML = `付着状態: ${enemy.status}`;
+
+            enemy.hp = Math.max(0, enemy.hp - dmg);
             document.getElementById('enemy-hp-bar').style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
 
-            await sleep(400);
+            await sleep(500);
             cardEl.classList.remove('attack-pulse');
             enemyEl.classList.remove('damage-blink');
         }
 
-        // 敵の反撃フェーズ
+        // 3. 敵の猛反撃（前衛が全滅するまで後衛を守る壁システム）
         if (enemy.hp > 0) {
             await enemyTurnAction();
         }
 
-        // ターンのクリーンアップ・判定
+        // 4. 勝敗確認および次ターンへの移行（状態異常は維持される）
         checkGameStatus();
-        resetTurnData();
+        if (enemy.hp > 0) {
+            resetTurnData();
+        }
     }
 
-    // 道具の効果適用
+    // 道具の効果（日本語ログ対応＆油連鎖）
     function applyItemEffect() {
-        document.getElementById('battle-log').innerHTML = `万屋が道具【${selectedItem}】を投げた！`;
+        document.getElementById('battle-log').innerHTML = `万屋が【${jpNames[selectedItem]}】を投げ入れた！`;
         if (selectedItem === 'hiuchiish') {
-            enemy.hp = Math.max(0, enemy.hp - 30);
+            let dmg = 40;
+            if (enemy.status === "油まみれ") {
+                dmg = 100;
+                enemy.status = "大炎上";
+                document.getElementById('battle-log').innerHTML = "火打石の火花が油に引火！【大炎上】させた！";
+                document.getElementById('enemy-status-tray').innerHTML = `付着状態: ${enemy.status}`;
+            }
+            enemy.hp = Math.max(0, enemy.hp - dmg);
             document.getElementById('enemy-hp-bar').style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
             document.getElementById('enemy-sprite').classList.add('damage-blink');
             setTimeout(() => document.getElementById('enemy-sprite').classList.remove('damage-blink'), 200);
         }
-        // デモ用に他の道具はログ演出のみ、またはお好みの数値をここに足せます。
+        // 他の道具も同様に拡張可能
     }
 
-    // 敵のAI攻撃（前衛優先）
+    // 敵の反撃AI（前衛優先）
     async function enemyTurnAction() {
-        // ターゲット選定（前衛スロットをチェック）
         let targetKey = null;
         let zenei1 = document.getElementById('slot-zenei-1').firstElementChild;
         let zenei2 = document.getElementById('slot-zenei-2').firstElementChild;
 
+        // 前衛スロットにいる妖怪を最優先で狙う壁システム
         if (zenei1 && yokais[zenei1.id.replace('yokai-','')]?.hp > 0) {
             targetKey = zenei1.id.replace('yokai-','');
         } else if (zenei2 && yokais[zenei2.id.replace('yokai-','')]?.hp > 0) {
             targetKey = zenei2.id.replace('yokai-','');
         } else {
-            // 前衛全滅なら後衛を狙う
+            // 前衛が全滅している場合のみ後衛が狙われる
             let kouei1 = document.getElementById('slot-kouei-1').firstElementChild;
             let kouei2 = document.getElementById('slot-kouei-2').firstElementChild;
             if (kouei1 && yokais[kouei1.id.replace('yokai-','')]?.hp > 0) targetKey = kouei1.id.replace('yokai-','');
@@ -505,7 +630,7 @@
         }
 
         if (targetKey) {
-            document.getElementById('battle-log').innerHTML = `敵の怨霊の反撃！ ${yokais[targetKey].name}が狙われた`;
+            document.getElementById('battle-log').innerHTML = `怨霊の反撃！【${yokais[targetKey].name}】が衝撃を受ける`;
             document.getElementById('enemy-sprite').classList.add('attack-pulse');
             await sleep(200);
             
@@ -516,38 +641,40 @@
             document.getElementById(`hp-${targetKey}`).style.width = `${(yokais[targetKey].hp / yokais[targetKey].maxHp) * 100}%`;
             
             if(yokais[targetKey].hp <= 0) {
-                targetCard.style.opacity = '0.4'; // 死亡演出
+                targetCard.style.opacity = '0.3'; // 昏倒（前衛崩壊）
             }
 
-            await sleep(400);
+            await sleep(500);
             document.getElementById('enemy-sprite').classList.remove('attack-pulse');
             targetCard.classList.remove('damage-blink');
         }
     }
 
-    // 勝敗チェック
+    // 勝利条件の演出修正（敵消去➔勝利文字配置）
     function checkGameStatus() {
         if (enemy.hp <= 0) {
-            showResult('text_shouri.png');
+            document.getElementById('global-overlay').style.display = 'block';
+            document.getElementById('enemy-sprite').style.opacity = '0'; // 敵の姿を消し去る
+            setTimeout(() => {
+                document.getElementById('victory-display').style.display = 'block'; // その位置に勝利画像を配置
+            }, 300);
         } else if (Object.values(yokais).every(y => y.hp <= 0)) {
-            showResult('text_haioku.png');
+            // 敗北時は従来どおり画面全体リザルト
+            const screen = document.getElementById('result-screen');
+            const img = document.getElementById('result-text-img');
+            img.style.backgroundImage = "url('text_haioku.png')";
+            screen.style.display = 'flex';
         }
     }
 
-    function showResult(imgName) {
-        const screen = document.getElementById('result-screen');
-        const img = document.getElementById('result-text-img');
-        img.style.backgroundImage = `url('${imgName}')`;
-        screen.style.display = 'flex';
-    }
-
-    // ターンリセット
+    // ターン終了後のクリーンアップ（状態異常はリセットせず蓄積）
     function resetTurnData() {
         isBattling = false;
+        document.getElementById('global-overlay').style.display = 'none'; // ロック解除
         actionOrder = [];
         selectedItem = null;
         document.querySelectorAll('.order-number').forEach(b => b.style.display = 'none');
-        document.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.item-frame-wrapper').forEach(c => c.classList.remove('selected'));
         
         turn++;
         if(turn > 3) {
@@ -556,9 +683,7 @@
         } else {
             document.getElementById('time-gauge-container').innerHTML = `逢魔が時 (${turn}/5)`;
         }
-        if(enemy.hp > 0 && !Object.values(yokais).every(y => y.hp <= 0)) {
-            document.getElementById('battle-log').innerHTML = `第 ${turn} ターン。次なる策を練られよ`;
-        }
+        document.getElementById('battle-log').innerHTML = `第 ${turn} ターン。次なる策を練られよ`;
     }
 
     function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
